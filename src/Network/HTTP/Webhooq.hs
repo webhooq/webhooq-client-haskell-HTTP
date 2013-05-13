@@ -1,4 +1,41 @@
-module Network.HTTP.Webhooq where
+module Network.HTTP.Webhooq
+  ( declareExchange
+  , deleteExchange
+  , declareQueue
+  , deleteQueue
+  , bindExchange
+  , bindQueue
+  , publish
+  , ExchangeType (..)
+  , Link(..)
+  , LinkValue(..)
+  , WebhooqServer(..)
+
+  , LinkParam
+  , WebhooqResponse
+  , ExchangeName
+  , SourceExchangeName
+  , DestinationExchangeName
+  , QueueName
+  , Argument
+  , RoutingKey
+  , ResponseReason
+
+  , header_exchange
+  , header_queue
+  , header_routing_key
+  , header_link
+  , header_message_id
+
+  , mkHostHeader
+  , mkExchangeHeader
+  , mkQueueHeader
+  , mkRoutingKeyHeader
+  , mkLinkHeader
+  , mkMessageIdHeader
+
+  , show --Show (Link, LinkValue, ExchangeType)
+ ) where
 
 import Network.HTTP
 import Network.URI
@@ -78,7 +115,7 @@ webhooq uri headers method body expectedResponseCode = do
   responseReason <- getResponseReason response
   if responseCode == expectedResponseCode 
     then return (responseCode, responseReason)
-    else fail ("Declare Exchange did not receive expected "++(shoh expectedResponseCode)++" response code! Received: "++(shoh responseCode)++" "++responseReason)
+    else fail ("'"++(show uri)++"' did not receive expected "++(shoh expectedResponseCode)++" response code! Received: "++(shoh responseCode)++" "++responseReason)
 
 declareExchange :: WebhooqServer -> [Header] -> ExchangeType -> ExchangeName -> [Argument] -> IO () 
 declareExchange server headers exchange_type exchange_name arguments = do
@@ -119,7 +156,7 @@ bindExchange server headers source_exchange routing_key destination_exchange = d
   let path = "/exchange/" ++ source_exchange ++ "/bind"
   let uri   = (wqBaseURI server) { uriPath = path }
   let hdrs  = (mkExchangeHeader destination_exchange) : (mkRoutingKeyHeader routing_key) : headers
-  webhooq uri hdrs POST Nothing http_accepted
+  webhooq uri hdrs POST Nothing http_created
   return ()
 
 bindQueue :: WebhooqServer -> [Header] -> SourceExchangeName -> RoutingKey -> QueueName -> Link -> IO ()
@@ -127,7 +164,7 @@ bindQueue server headers source_exchange routing_key queue_name link = do
   let path = "/exchange/" ++ source_exchange ++ "/bind"
   let uri   = (wqBaseURI server) { uriPath = path }
   let hdrs  = (mkLinkHeader link) : (mkQueueHeader queue_name) : (mkRoutingKeyHeader routing_key) : headers
-  webhooq uri hdrs POST Nothing http_accepted
+  webhooq uri hdrs POST Nothing http_created
   return ()
 
 publish :: WebhooqServer -> [Header] -> ExchangeName -> RoutingKey -> Mime.Type -> ByteString -> IO()
